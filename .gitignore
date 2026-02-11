@@ -1,0 +1,24 @@
+# --- C 语言垃圾文件 ---
+*.exe
+*.o
+*.out
+*.dll
+
+# --- Python 垃圾文件 ---
+__pycache__/
+*.pyc
+
+# --- VS Code 编辑器配置 (个人配置不需要上传) ---
+.vscode/
+.history/
+
+# --- Node.js / React (非常重要！这个文件夹超级大) ---
+node_modules/
+build/
+dist/
+
+# --- Mac 系统自动生成的垃圾 ---
+.DS_Store
+
+# --- 临时文件 ---
+tempCodeRunnerFile.c
