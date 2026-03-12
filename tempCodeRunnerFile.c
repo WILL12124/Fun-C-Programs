@@ -1,1 +1,0 @@
-    buffer = input / 2;
