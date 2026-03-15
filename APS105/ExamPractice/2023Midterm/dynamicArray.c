@@ -10,7 +10,7 @@ int main(int argc, char const *argv[])
     int *pNewArr = realloc(pArray, (numbersInArray + 1) * sizeof(int));
     *(pNewArr + numbersInArray) = newNumber;
 
-    free(pArray);
+    free(pArray); // DO NOT FREE AGAIN, realloc DOES IT FOR YOU
     pArray = NULL;
     return 0;
 }
