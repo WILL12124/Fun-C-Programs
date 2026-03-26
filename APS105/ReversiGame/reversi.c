@@ -30,7 +30,7 @@ int main(void)
     printBoard(board, n);
 
     // find available move
-    printf("Available moves for W: \n");
+    printf("Available moves for W:\n");
     char player = 'W';
     char *pW = availableMove(board, n, player);
 
@@ -40,7 +40,7 @@ int main(void)
         printf("%c%c", pW[i], pW[i + 1]);
         printf("\n");
     }
-    printf("Available moves for B: \n");
+    printf("Available moves for B:\n");
     player = 'B';
     char *pB = availableMove(board, n, player);
     for (int i = 0; pB[i] != '\0'; i += 2)
@@ -119,25 +119,27 @@ void boardInit(char board[][N], int n)
     board[mid][mid - 1] = 'B';
     board[mid][mid] = 'W';
 
+    printBoard(board, n);
+
     // setBoard
     char player, tempRow, tempCol;
-    printf("Enter board configuration: \n");
+    printf("Enter board configuration:\n");
     for (int i = 0; i < n * n; i++) // 如果觉得需要记array信息的，不妨直接输入一次做一次
     {
         scanf(" %c%c%c", &player, &tempRow, &tempCol);
-        if (player != 'B' && player != 'W' && player != '!')
-        {
-            printf("Invalid\n");
-            continue;
-        }
-        if (tempCol - 'a' > n || tempRow - 'a' > n)
-        {
-            printf("Invalid\n");
-            continue;
-        }
         if (player == '!')
         {
             return; // void 用return就可以了
+        }
+        if (player != 'B' && player != 'W')
+        {
+            printf("Invalid\n");
+            continue;
+        }
+        if (tempCol - 'a' >= n || tempRow - 'a' >= n)
+        {
+            printf("Invalid\n");
+            continue;
         }
 
         setBoard(board, n, player, tempRow - 'a', tempCol - 'a');
@@ -190,7 +192,6 @@ bool isValid(char board[][N], int n, int row, int col, char player)
 {
     int ver[] = {0, 1, 1, 1, 0, -1, -1, -1}; // star from 0 rad, counterclockwise
     int hor[] = {1, 1, 0, -1, -1, -1, 0, 1};
-    bool isOther = 0, isPlayer = 0;
     char other = (player == 'W') ? 'B' : 'W';
     if (board[row][col] != 'U')
     {
@@ -199,40 +200,36 @@ bool isValid(char board[][N], int n, int row, int col, char player)
 
     for (int i = 0; i < 8; i++)
     {
-        for (int i = 0; i < 8; i++)
+        bool foundOther = false;
+        for (int num = 1; num < n; num++)
         {
-            bool foundOther = false;
-            for (int num = 1; num < n; num++)
+            int nr = row + num * ver[i]; /////WRONG, i*ver
+            int nc = col + num * hor[i]; // hor ver 不要反了
+
+            // don't go out of bound
+            if (nr < 0 || nr >= n || nc < 0 || nc >= n)
             {
-                int nr = row + num * ver[i]; /////WRONG, i*ver
-                int nc = col + num * hor[i]; // hor ver 不要反了
-
-                // don't go out of bound
-                if (nr < 0 || nr >= n || nc < 0 || nc >= n)
+                break;
+            }
+            if (board[nr][nc] == other)
+            {
+                foundOther = true;
+            }
+            else if (board[nr][nc] == player) ////CORE!!! next depend on prevoius
+            {
+                if (foundOther)
                 {
-                    break;
+                    return true;
                 }
-                if (board[nr][nc] == other)
-                {
-                    foundOther = true;
-                }
-                else if (board[nr][nc] == player) ////CORE!!! next depend on prevoius
-                {
-                    if (foundOther)
-                    {
-                        return true;
-
-                        break;
-                    }
-                }
-                else
-                {
-                    break; // empty
-                }
+                break;
+            }
+            else
+            {
+                break; // empty
             }
         }
-        return false;
     }
+    return false;
 }
 
 void placeDot(char board[][N], int n, int row, int col, char player)
