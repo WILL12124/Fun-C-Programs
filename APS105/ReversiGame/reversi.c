@@ -8,13 +8,17 @@
 #include <stdlib.h>
 
 #define N 26
+bool isWin = 0;
 
 void setBoard(char board[][N], int n, char player, int row, int col);
 void boardInit(char board[][N], int n);
 void printBoard(char board[][N], int n);
+bool positionInBounds(int n, int row, int col);
+bool checkLegalInDirection(char board[][N], int n, int row, int col, char colour, int deltaRow, int deltaCol);
 char *availableMove(char board[][N], int n, char player);
 bool isValid(char board[][N], int n, int row, int col, char player);
 void placeDot(char board[][N], int n, int row, int col, char player);
+void killTheGame(char board[][N], int n, char botPlay);
 
 int main(void)
 {
@@ -29,67 +33,38 @@ int main(void)
     boardInit(board, n);
     printBoard(board, n);
 
-    // find available move
-    printf("Available moves for W:\n");
-    char player = 'W';
-    char *pW = availableMove(board, n, player);
+    char botPlay = '\0', userPlay = '\0';
+    printf("Computer plays (B/W): ");
+    do
+    {
+        scanf(" %c", botPlay);
+    } while (botPlay != 'B' || botPlay != 'W');
 
-    // print available move
-    for (int i = 0; pW[i] != '\0'; i += 2)
+    if (botPlay == 'B')
     {
-        printf("%c%c", pW[i], pW[i + 1]);
-        printf("\n");
-    }
-    printf("Available moves for B:\n");
-    player = 'B';
-    char *pB = availableMove(board, n, player);
-    for (int i = 0; pB[i] != '\0'; i += 2)
-    {
-        printf("%c%c", pB[i], pB[i + 1]);
-        printf("\n");
+        printBoard(board, n);
+        killTheGame(board, n, botPlay);
     }
 
-    char row, col;
-    printf("Enter a move:\n");
-    scanf(" %c%c%c", &player, &row, &col); // scanf前面加空格
-
-    bool found = false;
-    if (player == 'W')
+    userPlay = (botPlay == 'B') ? 'W' : 'B';
+    char userRow, userCol;
+    while (!isWin)
     {
-        for (int i = 0; pW[i] != '\0'; i += 2)
+        printBoard(board, n);
+        printf("Enter move for colour %c (RowCol): ", userPlay);
+        scanf(" %c%c", &userRow, &userCol);
+        if (isValid(board, n, userRow - 'a', userCol - 'a', userPlay))
         {
-            if (pW[i] == row && pW[i + 1] == col)
-            {
-                found = true;
-                break;
-            }
+            placeDot(board, n, userRow, userCol, userPlay);
         }
-    }
-    else
-    {
-        for (int i = 0; pB[i] != '\0'; i += 2)
+        else
         {
-            if (pB[i] == row && pB[i + 1] == col)
-            {
-                found = true;
-                break;
-            }
+            printf("Invalid move.\n%c player wins.\n", botPlay);
+            return 0;
         }
+        killTheGame(board, n, botPlay);
     }
 
-    if (found)
-    {
-        printf("Valid move.\n");
-        placeDot(board, n, row - 'a', col - 'a', player);
-    }
-    else
-    {
-        printf("Invalid move.\n");
-    }
-
-    printBoard(board, n);
-    free(pW); // don't be memory leak
-    free(pB);
     return 0;
 }
 
@@ -102,6 +77,45 @@ int main(void)
 void setBoard(char board[][N], int n, char player, int row, int col) // 这里的vla是指描述，不分配内存
 {
     board[row][col] = player;
+}
+
+bool positionInBounds(int n, int row, int col)
+{
+    return (row >= 0 && row < n && col >= 0 && col < n);
+}
+
+bool checkLegalInDirection(char board[][N], int n, int row, int col, char colour, int deltaRow, int deltaCol)
+{
+    char other = (colour == 'W') ? 'B' : 'W';
+    bool foundOther = false;
+    for (int num = 1; num < n; num++)
+    {
+        int nr = row + num * deltaRow;
+        int nc = col + num * deltaCol;
+
+        // don't go out of bound
+        if (!positionInBounds(n, nr, nc))
+        {
+            break;
+        }
+        if (board[nr][nc] == other)
+        {
+            foundOther = true;
+        }
+        else if (board[nr][nc] == colour) ////CORE!!! next depend on prevoius
+        {
+            if (foundOther)
+            {
+                return true;
+            }
+            break;
+        }
+        else
+        {
+            break; // empty
+        }
+    }
+    return false;
 }
 
 void boardInit(char board[][N], int n)
@@ -136,7 +150,7 @@ void boardInit(char board[][N], int n)
             printf("Invalid\n");
             continue;
         }
-        if (tempCol - 'a' >= n || tempRow - 'a' >= n)
+        if (!positionInBounds(n, tempRow - 'a', tempCol - 'a'))
         {
             printf("Invalid\n");
             continue;
@@ -190,9 +204,8 @@ char *availableMove(char board[][N], int n, char player)
 
 bool isValid(char board[][N], int n, int row, int col, char player)
 {
-    int ver[] = {0, 1, 1, 1, 0, -1, -1, -1}; // star from 0 rad, counterclockwise
-    int hor[] = {1, 1, 0, -1, -1, -1, 0, 1};
-    char other = (player == 'W') ? 'B' : 'W';
+    int deltaRows[] = {0, 1, 1, 1, 0, -1, -1, -1}; // star from 0 rad, counterclockwise
+    int deltaCols[] = {1, 1, 0, -1, -1, -1, 0, 1};
     if (board[row][col] != 'U')
     {
         return false;
@@ -200,33 +213,9 @@ bool isValid(char board[][N], int n, int row, int col, char player)
 
     for (int i = 0; i < 8; i++)
     {
-        bool foundOther = false;
-        for (int num = 1; num < n; num++)
+        if (checkLegalInDirection(board, n, row, col, player, deltaRows[i], deltaCols[i]))
         {
-            int nr = row + num * ver[i]; /////WRONG, i*ver
-            int nc = col + num * hor[i]; // hor ver 不要反了
-
-            // don't go out of bound
-            if (nr < 0 || nr >= n || nc < 0 || nc >= n)
-            {
-                break;
-            }
-            if (board[nr][nc] == other)
-            {
-                foundOther = true;
-            }
-            else if (board[nr][nc] == player) ////CORE!!! next depend on prevoius
-            {
-                if (foundOther)
-                {
-                    return true;
-                }
-                break;
-            }
-            else
-            {
-                break; // empty
-            }
+            return true;
         }
     }
     return false;
@@ -234,41 +223,37 @@ bool isValid(char board[][N], int n, int row, int col, char player)
 
 void placeDot(char board[][N], int n, int row, int col, char player)
 {
-    int ver[] = {0, 1, 1, 1, 0, -1, -1, -1};
-    int hor[] = {1, 1, 0, -1, -1, -1, 0, 1};
+    int deltaRows[] = {0, 1, 1, 1, 0, -1, -1, -1};
+    int deltaCols[] = {1, 1, 0, -1, -1, -1, 0, 1};
     char other = (player == 'W') ? 'B' : 'W';
     board[row][col] = player; // forgot to place piece
 
     for (int i = 0; i < 8; i++) // direction first!
     {
-        int count = 0;
-        bool valid = false;               // 是否形成有效夹击
-        for (int num = 1; num < n; num++) // r after
+        if (checkLegalInDirection(board, n, row, col, player, deltaRows[i], deltaCols[i]))
         {
-            int nr = row + num * ver[i];
-            int nc = col + num * hor[i];
-            if (nr < 0 || nr >= n || nc < 0 || nc >= n)
-                break;
-            if (board[nr][nc] == other)
+            // 遇到对手棋子, flip them
+            for (int num = 1; num < n; num++)
             {
-                count++; // 遇到对手棋子, 计数!!! 能知道要循环几次
-            }
-            else if (board[nr][nc] == player)
-            {
-                valid = true; // 遇到自己棋子， 夹击成立
-                break;
-            }
-            else
-            {
-                break; // empty
-            }
-        }
-        if (valid)
-        { // 要确认有效才能反转
-            for (int j = 1; j <= count; j++)
-            {
-                board[row + j * ver[i]][col + j * hor[i]] = player;
+                int nr = row + num * deltaRows[i];
+                int nc = col + num * deltaCols[i];
+                if (!positionInBounds(n, nr, nc))
+                    break;
+                if (board[nr][nc] == other)
+                {
+                    board[nr][nc] = player; // 要确认有效才能反转
+                }
+                else
+                {
+                    break; // hit own piece or empty, stop
+                }
             }
         }
     }
+}
+
+void killTheGame(char board[][n], int n, char botPlay)
+{
+    //
+    printf("Computer places %c at bc.\n", botPlay);
 }
